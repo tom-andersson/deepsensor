@@ -258,6 +258,30 @@ class TestDataProcessor(unittest.TestCase):
         with self.assertRaises(ValueError):
             dp(df_raw)
 
+def test_norm_unnorm_preserves_coords_xr(self):
+    region_size = (61,81)
+    lat_lims = (30,75)
+    lon_lims = (-15,45)
+    
+    latitude = np.linspace(*lat_lims, region_size[0], dtype=np.float32)
+    longitude = np.linspace(*lon_lims, region_size[1], dtype=np.float32)
+    dummy_data = np.random.normal(size=region_size)
+    da_raw = xr.DataArray(dummy_data, dims=['latitude', 'longitude'], coords={'latitude':latitude, 'longitude':longitude})
+
+    data_processor = DataProcessor(
+        x1_name='latitude', x1_map=lat_lims,
+        x2_name='longitude', x2_map=lon_lims
+    )
+
+    da = data_processor(da_raw) # to compute normalisation params
+
+    da_norm = data_processor.map_coords(da_raw)
+    da_unnorm = data_processor.unnormalise(da_norm)
+
+    try:
+        xr.align(da_raw, da_unnorm, join='exact')
+    except ValueError:
+        self.fail('Normalise-unnormalise did not preserve xarray coordinates exactly')
 
 if __name__ == "__main__":
     unittest.main()
